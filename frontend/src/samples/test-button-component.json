@@ -1,0 +1,10 @@
+{
+  "type": "COMPONENT",
+  "name": "Test Button Component",
+  "id": "test-123",
+  "properties": {
+    "width": 100,
+    "height": 40,
+    "backgroundColor": "#3B82F6"
+  }
+}
