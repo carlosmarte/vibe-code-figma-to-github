@@ -82,16 +82,34 @@ export default async function filesRoutes(fastify: FastifyInstance) {
     
     try {
       // Updated method signature: fileKey, format, options, then optional accessToken
-      const exportData = await figmaService.exportFile(
+      const exportResult = await figmaService.exportFile(
         id, 
         format, 
         { scale, nodeIds },
         request.user?.accessToken
       );
-      return { 
-        success: true, 
-        data: exportData 
-      };
+      
+      // Handle different export result types
+      if (exportResult.type === 'file') {
+        // Single file - send as download
+        reply
+          .header('Content-Type', exportResult.contentType)
+          .header('Content-Disposition', `attachment; filename="${exportResult.filename}"`)
+          .send(exportResult.buffer);
+      } else if (exportResult.type === 'json') {
+        // JSON data - send as download
+        reply
+          .header('Content-Type', 'application/json')
+          .header('Content-Disposition', `attachment; filename="${exportResult.filename}"`)
+          .send(JSON.stringify(exportResult.data, null, 2));
+      } else {
+        // Multiple files - return URLs (frontend can handle multiple downloads)
+        return { 
+          success: true, 
+          type: 'urls',
+          data: exportResult.data 
+        };
+      }
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Failed to export file' });
@@ -121,6 +139,26 @@ export default async function filesRoutes(fastify: FastifyInstance) {
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Failed to fetch file comments' });
+    }
+  });
+  
+  fastify.get('/:id/nodes', async (request: FastifyRequest<{ 
+    Params: FileParams; 
+    Querystring: { ids?: string } 
+  }>, reply: FastifyReply) => {
+    const { id } = request.params;
+    const { ids } = request.query as { ids?: string };
+    
+    try {
+      const nodeIds = ids ? ids.split(',') : undefined;
+      const nodes = await figmaService.getFileNodes(id, nodeIds, request.user?.accessToken);
+      return { 
+        success: true,
+        ...nodes 
+      };
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Failed to fetch file nodes' });
     }
   });
 }

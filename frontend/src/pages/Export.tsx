@@ -22,27 +22,60 @@ export const Export = () => {
       scale?: number;
       nodeIds?: string[];
     }) => {
+      // Request with responseType blob to handle binary data
       const response = await api.post(`/files/${data.fileId}/export`, {
         format: data.format,
         scale: data.scale,
         nodeIds: data.nodeIds,
+      }, {
+        responseType: 'blob',
       });
-      return response.data;
+      
+      // Check if response is JSON (for multiple files case)
+      const contentType = response.headers['content-type'];
+      if (contentType && contentType.includes('application/json') && response.data.size > 0) {
+        // Parse JSON response for multiple files
+        const text = await response.data.text();
+        return JSON.parse(text);
+      }
+      
+      // For single file, create download
+      const blob = response.data;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Extract filename from Content-Disposition header or create default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `figma-export-${data.fileId}.${data.format}`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      return { success: true, downloaded: true };
     },
     onSuccess: (data) => {
-      // Handle export success - download file or show link
-      console.log('Export successful:', data);
-      
-      // Create download link for JSON format
-      if (format === 'json') {
-        const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `figma-export-${selectedFile}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+      // Handle success
+      if (data && data.type === 'urls') {
+        // Multiple files - show links or handle differently
+        console.log('Multiple files available:', data.data);
+        alert('Multiple files exported. Check console for download URLs.');
+      } else if (!data.downloaded) {
+        console.log('Export successful');
       }
+    },
+    onError: (error) => {
+      console.error('Export failed:', error);
+      alert('Export failed. Please check the console for details.');
     },
   });
 
