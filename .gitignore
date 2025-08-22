@@ -1,0 +1,81 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+docs/
+# Production
+dist/
+build/
+test*
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# TypeScript
+*.tsbuildinfo
+
+# Backend specific
+backend/dist/
+
+# Frontend specific
+frontend/dist/
+frontend/.vite/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Process management
+.pids.json
+.running-processes.json
+
+# Application-generated storage files
+storage/
+storage/**/*
+storage/github-exports/
+storage/*.json
+./storage/
+
+# Local file exports
+exports/
+downloads/
+*.export.json
+*-export.json
+
+# PR response files
+pr-*.json
+export-history.json
+
+# Figma cache files
+.figma-cache/
+figma-cache/
+
+# Temporary application data
+.app-data/
+app-data/
