@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 interface FigmaFileViewerProps {
@@ -19,6 +19,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3200';
 
 export function FigmaFileViewer({ fileId }: FigmaFileViewerProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'structure' | 'export'>('details');
+  const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+  const [exportFormat, setExportFormat] = useState<'png' | 'jpg' | 'svg' | 'pdf'>('png');
+  const [exportScale, setExportScale] = useState<number>(1);
+  const [isExporting, setIsExporting] = useState(false);
+  const [nodeThumbnails, setNodeThumbnails] = useState<Record<string, string>>({});
+  const [isFetchingThumbnails, setIsFetchingThumbnails] = useState(false);
 
   const { data: fileData, isLoading, error } = useQuery<FigmaFile>({
     queryKey: ['figmaFile', fileId],
@@ -56,6 +62,179 @@ export function FigmaFileViewer({ fileId }: FigmaFileViewerProps) {
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
+  };
+
+  const getAllNodeIds = (node: any, ids: string[] = []): string[] => {
+    if (node.id) {
+      ids.push(node.id);
+    }
+    if (node.children) {
+      node.children.forEach((child: any) => getAllNodeIds(child, ids));
+    }
+    return ids;
+  };
+
+  const findNodeById = (node: any, id: string): any => {
+    if (node.id === id) {
+      return node;
+    }
+    if (node.children) {
+      for (const child of node.children) {
+        const found = findNodeById(child, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const getNodePreviewStyle = (node: any) => {
+    // Extract background color or fill color for preview
+    let backgroundColor = '#f3f4f6'; // default gray
+    
+    if (node.backgroundColor) {
+      const { r, g, b, a } = node.backgroundColor;
+      backgroundColor = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
+    } else if (node.fills && node.fills.length > 0) {
+      const fill = node.fills[0];
+      if (fill.type === 'SOLID' && fill.color) {
+        const { r, g, b, a } = fill.color;
+        backgroundColor = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
+      }
+    } else if (node.background && node.background.length > 0) {
+      const bg = node.background[0];
+      if (bg.type === 'SOLID' && bg.color) {
+        const { r, g, b, a } = bg.color;
+        backgroundColor = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
+      }
+    }
+    
+    return { backgroundColor };
+  };
+
+  // Render node tree for export selection
+  const renderNodeTree = (node: any, depth: number = 0): JSX.Element[] => {
+    const elements: JSX.Element[] = [];
+    
+    if (!node || !node.id) return elements;
+    
+    // Don't show DOCUMENT node itself, start with its children
+    if (node.type !== 'DOCUMENT') {
+      elements.push(
+        <label key={node.id} className={`flex items-center space-x-2`} style={{ marginLeft: `${depth * 16}px` }}>
+          <input
+            type="checkbox"
+            value={node.id}
+            checked={selectedNodes.includes(node.id)}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setSelectedNodes([...selectedNodes, node.id]);
+              } else {
+                setSelectedNodes(selectedNodes.filter(id => id !== node.id));
+              }
+            }}
+            className="rounded border-gray-300"
+          />
+          <span className="text-sm">
+            {node.name} 
+            <span className="text-gray-400 text-xs ml-1">({node.type})</span>
+          </span>
+        </label>
+      );
+    }
+    
+    // Recursively render children
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach((child: any) => {
+        elements.push(...renderNodeTree(child, node.type === 'DOCUMENT' ? depth : depth + 1));
+      });
+    }
+    
+    return elements;
+  };
+
+  // Fetch thumbnails for selected nodes
+  const fetchNodeThumbnails = async (nodeIds: string[]) => {
+    if (nodeIds.length === 0) return;
+    
+    setIsFetchingThumbnails(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/figma/files/${fileId}/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ids: nodeIds, // Get thumbnails for all selected nodes
+          format: 'png',
+          scale: 0.5, // Small scale for thumbnails
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.images) {
+          setNodeThumbnails(prev => ({ ...prev, ...data.images }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch thumbnails:', error);
+    } finally {
+      setIsFetchingThumbnails(false);
+    }
+  };
+
+  // Fetch thumbnails when selected nodes change
+  useEffect(() => {
+    if (selectedNodes.length > 0) {
+      fetchNodeThumbnails(selectedNodes);
+    } else {
+      // Clear thumbnails when no nodes are selected
+      setNodeThumbnails({});
+    }
+  }, [selectedNodes, fileId]);
+
+  const handleExportImages = async () => {
+    if (!fileData || selectedNodes.length === 0) return;
+    
+    setIsExporting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/figma/files/${fileId}/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ids: selectedNodes,
+          format: exportFormat,
+          scale: exportScale,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export images');
+      }
+
+      const data = await response.json();
+      
+      // Figma returns URLs for the exported images
+      if (data.images) {
+        // Download each image
+        for (const [nodeId, imageUrl] of Object.entries(data.images)) {
+          if (imageUrl) {
+            const link = document.createElement('a');
+            link.href = imageUrl as string;
+            link.download = `${nodeId}.${exportFormat}`;
+            link.target = '_blank';
+            link.click();
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export images. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (isLoading) {
@@ -224,11 +403,161 @@ export function FigmaFileViewer({ fileId }: FigmaFileViewerProps) {
                   </button>
                 </div>
 
-                <div className="border rounded-lg p-4 opacity-50">
-                  <h4 className="font-medium text-gray-900 mb-2">Export Images (Coming Soon)</h4>
-                  <p className="text-sm text-gray-600">
-                    Export specific nodes as PNG, SVG, or PDF files.
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-2">Export Images</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Export frames and components as image files.
                   </p>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left side - Selection and options */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Select Nodes to Export
+                        </label>
+                        <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2">
+                        {fileData.document && (
+                          <>
+                            <label className="flex items-center space-x-2 font-medium">
+                              <input
+                                type="checkbox"
+                                checked={selectedNodes.length === getAllNodeIds(fileData.document).length}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedNodes(getAllNodeIds(fileData.document));
+                                  } else {
+                                    setSelectedNodes([]);
+                                  }
+                                }}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm">Select All</span>
+                            </label>
+                            <div className="mt-2 space-y-1">
+                              {renderNodeTree(fileData.document)}
+                            </div>
+                          </>
+                        )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Format
+                          </label>
+                          <select
+                            value={exportFormat}
+                            onChange={(e) => setExportFormat(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          >
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="svg">SVG</option>
+                            <option value="pdf">PDF</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Scale
+                          </label>
+                          <select
+                            value={exportScale}
+                            onChange={(e) => setExportScale(Number(e.target.value))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          >
+                            <option value="0.5">0.5x</option>
+                            <option value="1">1x</option>
+                            <option value="2">2x</option>
+                            <option value="3">3x</option>
+                            <option value="4">4x</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleExportImages}
+                        disabled={selectedNodes.length === 0 || isExporting}
+                        className={`w-full py-2 px-4 rounded transition-colors ${
+                          selectedNodes.length === 0 || isExporting
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                      >
+                        {isExporting ? 'Exporting...' : `Export ${selectedNodes.length} Node(s)`}
+                      </button>
+                    </div>
+
+                    {/* Right side - Preview */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Preview
+                        {isFetchingThumbnails && (
+                          <span className="ml-2 text-xs text-gray-500">(Loading thumbnails...)</span>
+                        )}
+                      </label>
+                      <div className="border rounded-lg p-4 bg-gray-50 min-h-[400px] max-h-[600px] overflow-y-auto">
+                        {selectedNodes.length === 0 ? (
+                          <div className="flex items-center justify-center h-full text-gray-400">
+                            <p className="text-center">
+                              Select nodes to preview
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3">
+                            {selectedNodes.map((nodeId) => {
+                              const node = findNodeById(fileData.document, nodeId);
+                              if (!node) return null;
+                              
+                              const style = getNodePreviewStyle(node);
+                              const aspectRatio = node.absoluteBoundingBox 
+                                ? node.absoluteBoundingBox.height / node.absoluteBoundingBox.width
+                                : 1;
+                              
+                              return (
+                                <div key={nodeId} className="space-y-2">
+                                  <div 
+                                    className="relative rounded-lg shadow-sm overflow-hidden bg-gray-100"
+                                    style={{
+                                      paddingBottom: `${Math.min(aspectRatio * 100, 150)}%`
+                                    }}
+                                  >
+                                    {nodeThumbnails[nodeId] ? (
+                                      <img 
+                                        src={nodeThumbnails[nodeId]}
+                                        alt={node.name}
+                                        className="absolute inset-0 w-full h-full object-contain"
+                                      />
+                                    ) : (
+                                      <div 
+                                        className="absolute inset-0 flex items-center justify-center p-2"
+                                        style={{ backgroundColor: style.backgroundColor }}
+                                      >
+                                        {node.type === 'TEXT' && node.characters ? (
+                                          <p className="text-xs text-center truncate">
+                                            {node.characters.substring(0, 30)}
+                                          </p>
+                                        ) : (
+                                          <div className="text-xs text-gray-500">
+                                            {node.type}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-600 truncate" title={node.name}>
+                                    {node.name}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="border rounded-lg p-4 opacity-50">
