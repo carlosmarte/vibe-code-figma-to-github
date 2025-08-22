@@ -223,11 +223,11 @@ export function GitHubExport({ fileId }: GitHubExportProps) {
             type="text"
             value={filePath}
             onChange={(e) => setFilePath(e.target.value)}
-            placeholder="src/components/figma-export.json"
+            placeholder="src/components/figma-export.json or src/components/"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Path where the component will be saved in the repository
+            Path where the component will be saved. You can specify a full filename (e.g., button.json) or just a directory (filename will be auto-generated from component name)
           </p>
         </div>
 

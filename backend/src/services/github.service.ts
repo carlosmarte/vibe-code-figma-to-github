@@ -105,21 +105,32 @@ export class GitHubService {
     message: string
   ): Promise<string> {
     try {
+      // Decode the file path if it's URL encoded
+      const decodedPath = decodeURIComponent(filePath);
+      
       let sha: string | undefined;
       
       try {
         const { data: existingFile } = await this.octokit.repos.getContent({
           owner,
           repo,
-          path: filePath,
+          path: decodedPath,
           ref: branch
         });
         
-        if ('sha' in existingFile) {
+        // Check if it's a file (not a directory)
+        if (!Array.isArray(existingFile) && 'sha' in existingFile && existingFile.type === 'file') {
           sha = existingFile.sha;
+          console.log(`Found existing file with SHA: ${sha}`);
+        } else if (Array.isArray(existingFile)) {
+          // It's a directory, we need to create a file in it
+          console.log(`Path ${decodedPath} is a directory, creating new file`);
         }
       } catch (error: any) {
-        if (error.status !== 404) {
+        if (error.status === 404) {
+          console.log(`File ${decodedPath} does not exist, will create new file`);
+        } else {
+          console.error(`Error checking for existing file: ${error.message}`);
           throw error;
         }
       }
@@ -129,7 +140,7 @@ export class GitHubService {
       const params: any = {
         owner,
         repo,
-        path: filePath,
+        path: decodedPath,
         message,
         content: encodedContent,
         branch
@@ -139,10 +150,13 @@ export class GitHubService {
         params.sha = sha;
       }
 
+      console.log(`Committing file to ${decodedPath} on branch ${branch}${sha ? ' (updating existing)' : ' (creating new)'}`);
+      
       const { data } = await this.octokit.repos.createOrUpdateFileContents(params);
 
       return data.commit.sha;
     } catch (error: any) {
+      console.error('Commit file error details:', error.response?.data || error.message);
       throw new Error(`Failed to commit file: ${error.message}`);
     }
   }
@@ -199,12 +213,29 @@ export class GitHubService {
       await this.createBranch(owner, repo, request.branchName, request.baseBranch);
     }
     
+    // Ensure the file path has a proper filename and extension
+    let filePath = request.filePath;
+    
+    // Check if the path doesn't have an extension (likely a directory)
+    if (!filePath.match(/\.[a-zA-Z0-9]+$/)) {
+      // If it doesn't end with a slash, add one
+      if (!filePath.endsWith('/')) {
+        filePath += '/';
+      }
+      // Add a default filename based on the component name
+      const sanitizedName = request.componentName
+        .replace(/[^a-zA-Z0-9-_]/g, '-')
+        .toLowerCase();
+      filePath += `${sanitizedName}.json`;
+      console.log(`Adjusted file path from "${request.filePath}" to "${filePath}"`);
+    }
+    
     const commitMessage = `Export Figma component: ${request.componentName}`;
     await this.commitFile(
       owner,
       repo,
       request.branchName,
-      request.filePath,
+      filePath,
       request.componentData,
       commitMessage
     );
@@ -213,7 +244,7 @@ export class GitHubService {
     const prBody = `## Figma Component Export
 
 **Component:** ${request.componentName}
-**File Path:** ${request.filePath}
+**File Path:** ${filePath}
 **Exported at:** ${new Date().toISOString()}
 
 ### Description
