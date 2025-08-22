@@ -1,0 +1,51 @@
+{
+  "name": "figma-admin-portal",
+  "version": "1.0.0",
+  "description": "Figma File Admin Portal for importing and exporting Figma files",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "npm run dev:safe",
+    "dev:safe": "npm run clean:ports && concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:raw": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend-only": "npm run clean:backend-port && cd backend && npm run dev",
+    "dev:frontend-only": "npm run clean:frontend-port && cd frontend && npm run dev",
+    "start": "node scripts/startup.js",
+    "stop": "node scripts/shutdown.js",
+    "restart": "node scripts/restart.js",
+    "status": "node scripts/status.js",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "serve": "cd backend && npm start",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "type-check": "npm run type-check:backend && npm run type-check:frontend",
+    "type-check:backend": "cd backend && npm run type-check",
+    "type-check:frontend": "cd frontend && npm run type-check",
+    "clean": "rm -rf node_modules backend/node_modules frontend/node_modules backend/dist frontend/dist .pids.json .running-processes.json .server.lock",
+    "clean:ports": "lsof -ti:3000,3200,5173,5174,5175 | xargs kill -9 2>/dev/null || true",
+    "clean:backend-port": "lsof -ti:3200 | xargs kill -9 2>/dev/null || true",
+    "clean:frontend-port": "lsof -ti:5173,5174,5175 | xargs kill -9 2>/dev/null || true",
+    "clean:processes": "rm -f .running-processes.json .server.lock .pids.json"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.12",
+    "tailwindcss": "^4.1.12"
+  }
+}
