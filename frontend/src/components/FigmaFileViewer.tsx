@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ComponentsShowcase } from '../samples/ComponentsShowcase';
 
 interface FigmaFileViewerProps {
   fileId: string;
@@ -18,7 +19,7 @@ interface FigmaFile {
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3200';
 
 export function FigmaFileViewer({ fileId }: FigmaFileViewerProps) {
-  const [activeTab, setActiveTab] = useState<'details' | 'structure' | 'export'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'structure' | 'export' | 'components'>('details');
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [exportFormat, setExportFormat] = useState<'png' | 'jpg' | 'svg' | 'pdf'>('png');
   const [exportScale, setExportScale] = useState<number>(1);
@@ -299,6 +300,16 @@ export function FigmaFileViewer({ fileId }: FigmaFileViewerProps) {
           >
             Export
           </button>
+          <button
+            onClick={() => setActiveTab('components')}
+            className={`py-2 px-6 border-b-2 font-medium text-sm ${
+              activeTab === 'components'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Components
+          </button>
         </nav>
       </div>
 
@@ -568,6 +579,16 @@ export function FigmaFileViewer({ fileId }: FigmaFileViewerProps) {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'components' && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Component Library</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Sample Tailwind CSS components that can be used as design references or imported into your projects.
+            </p>
+            <ComponentsShowcase />
           </div>
         )}
       </div>
