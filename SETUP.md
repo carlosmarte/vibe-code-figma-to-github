@@ -1,5 +1,16 @@
 # Figma to GitHub Export - Complete Setup Guide
 
+
+----
+Public Figma File: https://www.figma.com/design/tmaZV2VEXIIrWYVjqaNUxa/Spotify-Banner-001?t=7MI114kpjIMoYeJw-0
+
+Repo: https://github.com/carlosmarte/vibe-code-figma-to-github
+
+Example PR: https://github.com/carlosmarte/vibe-code-figma-to-github/pull/5/files
+----
+
+
+
 ## 📋 Table of Contents
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
