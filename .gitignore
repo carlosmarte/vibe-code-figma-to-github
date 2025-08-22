@@ -6,7 +6,7 @@ node_modules/
 # Testing
 coverage/
 *.lcov
-
+docs/
 # Production
 dist/
 build/
@@ -54,3 +54,28 @@ frontend/.vite/
 # Process management
 .pids.json
 .running-processes.json
+
+# Application-generated storage files
+storage/
+storage/**/*
+storage/github-exports/
+storage/*.json
+./storage/
+
+# Local file exports
+exports/
+downloads/
+*.export.json
+*-export.json
+
+# PR response files
+pr-*.json
+export-history.json
+
+# Figma cache files
+.figma-cache/
+figma-cache/
+
+# Temporary application data
+.app-data/
+app-data/

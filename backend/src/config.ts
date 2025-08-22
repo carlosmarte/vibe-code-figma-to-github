@@ -13,6 +13,10 @@ export const config = {
   FIGMA_TOKEN: process.env.FIGMA_TOKEN || '',
   FIGMA_API_BASE_URL: 'https://api.figma.com/v1',
   
+  // GitHub API Configuration
+  GITHUB_TOKEN_VIBE: process.env.GITHUB_TOKEN_VIBE || '',
+  GITHUB_API_BASE_URL: 'https://api.github.com',
+  
   // Database (optional - for storing user sessions/data)
   DATABASE_URL: process.env.DATABASE_URL || '',
 };

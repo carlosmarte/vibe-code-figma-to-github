@@ -571,12 +571,6 @@ export function FigmaFileViewer({ fileId }: FigmaFileViewerProps) {
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-4 opacity-50">
-                  <h4 className="font-medium text-gray-900 mb-2">GitHub Export (Coming Soon)</h4>
-                  <p className="text-sm text-gray-600">
-                    Push file data directly to a GitHub repository.
-                  </p>
-                </div>
               </div>
             </div>
           </div>

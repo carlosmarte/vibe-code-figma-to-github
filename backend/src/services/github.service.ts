@@ -1,0 +1,266 @@
+import { config } from '../config';
+import { Octokit } from '@octokit/rest';
+import type { 
+  GitHubRepoInfo, 
+  GitHubBranch, 
+  GitHubPullRequest, 
+  GitHubExportRequest 
+} from '../../../shared/types';
+
+export class GitHubService {
+  private octokit: Octokit;
+
+  constructor() {
+    if (!config.GITHUB_TOKEN_VIBE) {
+      throw new Error('GitHub token (GITHUB_TOKEN_VIBE) is not configured');
+    }
+    
+    this.octokit = new Octokit({
+      auth: config.GITHUB_TOKEN_VIBE,
+      baseUrl: config.GITHUB_API_BASE_URL
+    });
+  }
+
+  async validateRepo(repoUrl: string): Promise<GitHubRepoInfo> {
+    const { owner, repo } = this.parseRepoUrl(repoUrl);
+    
+    try {
+      const { data } = await this.octokit.repos.get({ owner, repo });
+      
+      return {
+        owner: data.owner.login,
+        repo: data.name,
+        fullName: data.full_name,
+        defaultBranch: data.default_branch,
+        private: data.private,
+        permissions: {
+          push: data.permissions?.push ?? false,
+          pull: data.permissions?.pull ?? true,
+          admin: data.permissions?.admin ?? false
+        }
+      };
+    } catch (error: any) {
+      if (error.status === 404) {
+        throw new Error('Repository not found or you do not have access');
+      }
+      throw new Error(`Failed to validate repository: ${error.message}`);
+    }
+  }
+
+  async getBranches(owner: string, repo: string): Promise<GitHubBranch[]> {
+    try {
+      const { data } = await this.octokit.repos.listBranches({
+        owner,
+        repo,
+        per_page: 100
+      });
+      
+      return data.map(branch => ({
+        name: branch.name,
+        protected: branch.protected
+      }));
+    } catch (error: any) {
+      throw new Error(`Failed to fetch branches: ${error.message}`);
+    }
+  }
+
+  async createBranch(
+    owner: string, 
+    repo: string, 
+    branchName: string, 
+    baseBranch: string
+  ): Promise<void> {
+    try {
+      const { data: baseBranchData } = await this.octokit.repos.getBranch({
+        owner,
+        repo,
+        branch: baseBranch
+      });
+
+      const baseSha = baseBranchData.commit.sha;
+
+      await this.octokit.git.createRef({
+        owner,
+        repo,
+        ref: `refs/heads/${branchName}`,
+        sha: baseSha
+      });
+    } catch (error: any) {
+      if (error.status === 422 && error.message?.includes('Reference already exists')) {
+        throw new Error(`Branch '${branchName}' already exists`);
+      }
+      throw new Error(`Failed to create branch: ${error.message}`);
+    }
+  }
+
+  async commitFile(
+    owner: string,
+    repo: string,
+    branch: string,
+    filePath: string,
+    content: string,
+    message: string
+  ): Promise<string> {
+    try {
+      let sha: string | undefined;
+      
+      try {
+        const { data: existingFile } = await this.octokit.repos.getContent({
+          owner,
+          repo,
+          path: filePath,
+          ref: branch
+        });
+        
+        if ('sha' in existingFile) {
+          sha = existingFile.sha;
+        }
+      } catch (error: any) {
+        if (error.status !== 404) {
+          throw error;
+        }
+      }
+
+      const encodedContent = Buffer.from(content).toString('base64');
+
+      const params: any = {
+        owner,
+        repo,
+        path: filePath,
+        message,
+        content: encodedContent,
+        branch
+      };
+      
+      if (sha) {
+        params.sha = sha;
+      }
+
+      const { data } = await this.octokit.repos.createOrUpdateFileContents(params);
+
+      return data.commit.sha;
+    } catch (error: any) {
+      throw new Error(`Failed to commit file: ${error.message}`);
+    }
+  }
+
+  async createPullRequest(
+    owner: string,
+    repo: string,
+    title: string,
+    body: string,
+    head: string,
+    base: string
+  ): Promise<GitHubPullRequest> {
+    try {
+      const { data } = await this.octokit.pulls.create({
+        owner,
+        repo,
+        title,
+        body,
+        head,
+        base
+      });
+
+      return {
+        number: data.number,
+        url: data.html_url,
+        title: data.title,
+        body: data.body || '',
+        state: data.state,
+        head: data.head.ref,
+        base: data.base.ref,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+    } catch (error: any) {
+      if (error.status === 422) {
+        const message = error.message || '';
+        if (message.includes('No commits between')) {
+          throw new Error('No changes to create a pull request');
+        }
+        if (message.includes('pull request already exists')) {
+          throw new Error('A pull request already exists for this branch');
+        }
+      }
+      throw new Error(`Failed to create pull request: ${error.message}`);
+    }
+  }
+
+  async exportToGitHub(request: GitHubExportRequest): Promise<GitHubPullRequest> {
+    const { owner, repo } = this.parseRepoUrl(request.repoUrl);
+    
+    await this.validateRepo(request.repoUrl);
+    
+    if (request.branchName !== request.baseBranch) {
+      await this.createBranch(owner, repo, request.branchName, request.baseBranch);
+    }
+    
+    const commitMessage = `Export Figma component: ${request.componentName}`;
+    await this.commitFile(
+      owner,
+      repo,
+      request.branchName,
+      request.filePath,
+      request.componentData,
+      commitMessage
+    );
+    
+    const prTitle = `Export Figma component: ${request.componentName}`;
+    const prBody = `## Figma Component Export
+
+**Component:** ${request.componentName}
+**File Path:** ${request.filePath}
+**Exported at:** ${new Date().toISOString()}
+
+### Description
+This PR contains an exported Figma component.
+
+---
+*Automated export from Figma to GitHub*`;
+
+    const pr = await this.createPullRequest(
+      owner,
+      repo,
+      prTitle,
+      prBody,
+      request.branchName,
+      request.targetBranch
+    );
+
+    return pr;
+  }
+
+  private parseRepoUrl(url: string): { owner: string; repo: string } {
+    const httpsMatch = url.match(/https:\/\/github\.com\/([^\/]+)\/([^\/\.]+)/);
+    
+    if (httpsMatch) {
+      return {
+        owner: httpsMatch[1],
+        repo: httpsMatch[2]
+      };
+    }
+    
+    const gitMatch = url.match(/git@github\.com:([^\/]+)\/([^\.]+)\.git/);
+    
+    if (gitMatch) {
+      return {
+        owner: gitMatch[1],
+        repo: gitMatch[2]
+      };
+    }
+    
+    const pathMatch = url.match(/^([^\/]+)\/([^\/]+)$/);
+    
+    if (pathMatch) {
+      return {
+        owner: pathMatch[1],
+        repo: pathMatch[2]
+      };
+    }
+    
+    throw new Error('Invalid GitHub repository URL. Expected format: https://github.com/owner/repo');
+  }
+}
+
+export const githubService = new GitHubService();

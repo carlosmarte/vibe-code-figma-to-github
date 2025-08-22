@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { Save, Key, Bell, Shield, Palette } from 'lucide-react';
 
 export const Settings = () => {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
 
   const tabs = [
@@ -57,7 +55,7 @@ export const Settings = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue={user?.name}
+                    defaultValue="Admin User"
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -68,7 +66,7 @@ export const Settings = () => {
                   </label>
                   <input
                     type="email"
-                    defaultValue={user?.email}
+                    defaultValue="admin@example.com"
                     disabled
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50"
                   />
@@ -105,6 +103,31 @@ export const Settings = () => {
                   />
                   <p className="mt-1 text-sm text-gray-500">
                     Your token is encrypted and stored securely
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    GitHub Personal Access Token
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter your GitHub personal access token"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Configure in .env file as GITHUB_TOKEN_VIBE. Required for GitHub export functionality.
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    <a 
+                      href="https://github.com/settings/tokens" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      Generate token on GitHub
+                    </a>
+                    {' '}(requires 'repo' scope)
                   </p>
                 </div>
 

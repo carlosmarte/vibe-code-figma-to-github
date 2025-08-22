@@ -1,6 +1,12 @@
-import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { FigmaFileViewer } from './components/FigmaFileViewer';
+import { Dashboard } from './pages/Dashboard';
+import { Files } from './pages/Files';
+import { FileDetail } from './pages/FileDetail';
+import { Import } from './pages/Import';
+import { Export } from './pages/Export';
+import { Settings } from './pages/Settings';
+import { FileText, Upload, Download, Settings as SettingsIcon, Home } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,97 +18,101 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const [fileId, setFileId] = useState('tmaZV2VEXIIrWYVjqaNUxa');
-  const [submittedFileId, setSubmittedFileId] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (fileId.trim()) {
-      setSubmittedFileId(fileId.trim());
-    }
-  };
-
-  const handleReset = () => {
-    setFileId('');
-    setSubmittedFileId('');
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <header className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Figma File Viewer
-            </h1>
-            <p className="text-gray-600">
-              Enter a Figma file ID to view and export file data
-            </p>
-          </header>
-
-          {!submittedFileId ? (
-            <div className="max-w-2xl mx-auto">
-              <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
-                <div className="mb-4">
-                  <label htmlFor="fileId" className="block text-sm font-medium text-gray-700 mb-2">
-                    Figma File ID
-                  </label>
-                  <input
-                    type="text"
-                    id="fileId"
-                    value={fileId}
-                    onChange={(e) => setFileId(e.target.value)}
-                    placeholder="Enter Figma file ID (e.g., abc123XYZ)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                  <p className="mt-2 text-sm text-gray-500">
-                    You can find the file ID in the Figma URL: figma.com/file/<strong>[FILE_ID]</strong>/...
-                  </p>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          {/* Navigation */}
+          <nav className="bg-white shadow-sm border-b">
+            <div className="container mx-auto px-4">
+              <div className="flex items-center justify-between h-16">
+                <div className="flex items-center space-x-8">
+                  <h1 className="text-xl font-bold text-gray-900">Figma Admin Portal</h1>
+                  <div className="flex space-x-4">
+                    <NavLink
+                      to="/"
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`
+                      }
+                    >
+                      <Home size={18} />
+                      Dashboard
+                    </NavLink>
+                    <NavLink
+                      to="/files"
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`
+                      }
+                    >
+                      <FileText size={18} />
+                      Files
+                    </NavLink>
+                    <NavLink
+                      to="/import"
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`
+                      }
+                    >
+                      <Upload size={18} />
+                      Import
+                    </NavLink>
+                    <NavLink
+                      to="/export"
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`
+                      }
+                    >
+                      <Download size={18} />
+                      Export
+                    </NavLink>
+                    <NavLink
+                      to="/settings"
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`
+                      }
+                    >
+                      <SettingsIcon size={18} />
+                      Settings
+                    </NavLink>
+                  </div>
                 </div>
-                
-                <button
-                  type="submit"
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  Load Figma File
-                </button>
-              </form>
-
-              <div className="mt-8 bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <h3 className="font-semibold text-amber-900 mb-2">Configuration Required</h3>
-                <p className="text-sm text-amber-800">
-                  Make sure the backend server has the FIGMA_TOKEN environment variable set with your Figma personal access token.
-                </p>
-                <p className="text-sm text-amber-800 mt-2">
-                  Get your token from: <a href="https://www.figma.com/developers/api#access-tokens" target="_blank" rel="noopener noreferrer" className="underline">
-                    Figma Settings → Personal Access Tokens
-                  </a>
-                </p>
               </div>
             </div>
-          ) : (
-            <div>
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <span className="text-sm text-gray-600">Viewing file: </span>
-                  <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                    {submittedFileId}
-                  </span>
-                </div>
-                <button
-                  onClick={handleReset}
-                  className="text-sm bg-gray-600 text-white py-1 px-3 rounded hover:bg-gray-700 transition-colors"
-                >
-                  Load Different File
-                </button>
-              </div>
-              
-              <FigmaFileViewer fileId={submittedFileId} />
-            </div>
-          )}
+          </nav>
+
+          {/* Main Content */}
+          <main className="container mx-auto px-4 py-8">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/files" element={<Files />} />
+              <Route path="/files/:fileId" element={<FileDetail />} />
+              <Route path="/import" element={<Import />} />
+              <Route path="/export" element={<Export />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </main>
         </div>
-      </div>
+      </Router>
     </QueryClientProvider>
   );
 }

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../services/api';
-import { Download, FileJson, Image, FileText, AlertCircle } from 'lucide-react';
+import { Download, FileJson, Image, FileText, AlertCircle, Github } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { GitHubExport } from '../components/GitHubExport';
 
 export const Export = () => {
   const [searchParams] = useSearchParams();
@@ -12,6 +13,7 @@ export const Export = () => {
   const [format, setFormat] = useState<'json' | 'svg' | 'png' | 'pdf'>('json');
   const [scale, setScale] = useState(1);
   const [nodeIds, setNodeIds] = useState('');
+  const [activeTab, setActiveTab] = useState<'traditional' | 'github'>('traditional');
 
   const { data: files } = useQuery({
     queryKey: ['files'],
@@ -79,33 +81,67 @@ export const Export = () => {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Export Figma File</h1>
-        <p className="text-gray-600 mt-2">Export your Figma files in various formats</p>
+        <p className="text-gray-600 mt-2">Export your Figma files in various formats or push to GitHub</p>
       </div>
 
-      <div className="max-w-2xl">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="space-y-6">
-            {/* File Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select File
-              </label>
-              <select
-                value={selectedFile}
-                onChange={(e) => setSelectedFile(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <div className="max-w-4xl">
+        <div className="bg-white rounded-lg shadow-sm">
+          {/* Export Type Tabs */}
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab('traditional')}
+                className={`py-3 px-6 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'traditional'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
-                <option value="">Choose a file...</option>
-                {files?.map((file: any) => (
-                  <option key={file.key} value={file.key}>
-                    {file.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div className="flex items-center gap-2">
+                  <FileJson size={18} />
+                  Traditional Export
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('github')}
+                className={`py-3 px-6 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'github'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Github size={18} />
+                  GitHub Export
+                </div>
+              </button>
+            </nav>
+          </div>
 
-            {/* Format Selection */}
-            <div>
+          <div className="p-6">
+            {activeTab === 'traditional' ? (
+              <div className="space-y-6">
+                {/* File Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select File
+                  </label>
+                  <select
+                    value={selectedFile}
+                    onChange={(e) => setSelectedFile(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Choose a file...</option>
+                    {files?.map((file: any) => (
+                      <option key={file.key} value={file.key}>
+                        {file.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Format Selection */}
+                <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Export Format
               </label>
@@ -136,8 +172,8 @@ export const Export = () => {
               </div>
             </div>
 
-            {/* Scale (for PNG) */}
-            {format === 'png' && (
+                {/* Scale (for PNG) */}
+                {format === 'png' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Scale
@@ -156,8 +192,8 @@ export const Export = () => {
               </div>
             )}
 
-            {/* Node IDs (optional) */}
-            {format !== 'json' && (
+                {/* Node IDs (optional) */}
+                {format !== 'json' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Node IDs (Optional)
@@ -175,16 +211,16 @@ export const Export = () => {
               </div>
             )}
 
-            {/* Error Message */}
-            {exportMutation.isError && (
+                {/* Error Message */}
+                {exportMutation.isError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-red-800">Failed to export file. Please try again.</p>
               </div>
             )}
 
-            {/* Export Button */}
-            <div className="flex items-center gap-3">
+                {/* Export Button */}
+                <div className="flex items-center gap-3">
               <button
                 onClick={handleExport}
                 disabled={!selectedFile || exportMutation.isPending}
@@ -202,7 +238,11 @@ export const Export = () => {
                   </>
                 )}
               </button>
-            </div>
+                </div>
+              </div>
+            ) : (
+              <GitHubExport fileId={selectedFile} />
+            )}
           </div>
         </div>
       </div>
