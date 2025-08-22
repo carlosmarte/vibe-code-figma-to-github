@@ -9,10 +9,8 @@ export const config = {
   JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   
-  // Figma API Configuration
-  FIGMA_CLIENT_ID: process.env.FIGMA_CLIENT_ID || '',
-  FIGMA_CLIENT_SECRET: process.env.FIGMA_CLIENT_SECRET || '',
-  FIGMA_REDIRECT_URI: process.env.FIGMA_REDIRECT_URI || 'http://localhost:3200/api/auth/callback',
+  // Figma API Configuration - Using Personal Access Token
+  FIGMA_TOKEN: process.env.FIGMA_TOKEN || '',
   FIGMA_API_BASE_URL: 'https://api.figma.com/v1',
   
   // Database (optional - for storing user sessions/data)
