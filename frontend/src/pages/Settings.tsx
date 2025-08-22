@@ -92,6 +92,17 @@ export const Settings = () => {
               <div className="space-y-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">API Configuration</h2>
                 
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-900">
+                    <strong>Note:</strong> API tokens can be configured here for session-based authentication, 
+                    or set in your <code className="bg-blue-100 px-1 py-0.5 rounded">.env</code> file for server-wide configuration:
+                  </p>
+                  <ul className="mt-2 text-sm text-blue-800 list-disc list-inside">
+                    <li><code className="bg-blue-100 px-1 py-0.5 rounded">FIGMA_TOKEN</code> - Figma Personal Access Token</li>
+                    <li><code className="bg-blue-100 px-1 py-0.5 rounded">GITHUB_TOKEN_VIBE</code> - GitHub Personal Access Token</li>
+                  </ul>
+                </div>
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Figma Access Token

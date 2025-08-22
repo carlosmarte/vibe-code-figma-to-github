@@ -11,14 +11,19 @@ export class FigmaService {
     });
   }
 
-  private getAuthHeaders(accessToken: string) {
+  private getAuthHeaders(accessToken?: string) {
+    // Use provided token or fallback to environment variable
+    const token = accessToken || config.FIGMA_TOKEN;
+    if (!token) {
+      throw new Error('Figma API token not provided. Please set FIGMA_TOKEN in environment or provide token.');
+    }
     return {
-      'Authorization': `Bearer ${accessToken}`,
+      'X-Figma-Token': token,
       'Content-Type': 'application/json',
     };
   }
 
-  async getCurrentUser(accessToken: string) {
+  async getCurrentUser(accessToken?: string) {
     try {
       const response = await this.api.get('/me', {
         headers: this.getAuthHeaders(accessToken),
@@ -30,7 +35,7 @@ export class FigmaService {
     }
   }
 
-  async getUserFiles(accessToken: string) {
+  async getUserFiles(accessToken?: string) {
     try {
       const response = await this.api.get('/me/files', {
         headers: this.getAuthHeaders(accessToken),
@@ -42,7 +47,7 @@ export class FigmaService {
     }
   }
 
-  async getUserTeams(accessToken: string) {
+  async getUserTeams(accessToken?: string) {
     try {
       const response = await this.api.get('/me/teams', {
         headers: this.getAuthHeaders(accessToken),
@@ -54,7 +59,7 @@ export class FigmaService {
     }
   }
 
-  async getUserProjects(accessToken: string, teamId?: string) {
+  async getUserProjects(accessToken?: string, teamId?: string) {
     try {
       const endpoint = teamId ? `/teams/${teamId}/projects` : '/me/projects';
       const response = await this.api.get(endpoint, {
@@ -67,7 +72,7 @@ export class FigmaService {
     }
   }
 
-  async getFile(accessToken: string, fileKey: string) {
+  async getFile(fileKey: string, accessToken?: string) {
     try {
       const response = await this.api.get(`/files/${fileKey}`, {
         headers: this.getAuthHeaders(accessToken),
@@ -79,7 +84,7 @@ export class FigmaService {
     }
   }
 
-  async getFileVersions(accessToken: string, fileKey: string) {
+  async getFileVersions(fileKey: string, accessToken?: string) {
     try {
       const response = await this.api.get(`/files/${fileKey}/versions`, {
         headers: this.getAuthHeaders(accessToken),
@@ -91,7 +96,7 @@ export class FigmaService {
     }
   }
 
-  async getFileComments(accessToken: string, fileKey: string) {
+  async getFileComments(fileKey: string, accessToken?: string) {
     try {
       const response = await this.api.get(`/files/${fileKey}/comments`, {
         headers: this.getAuthHeaders(accessToken),
@@ -103,9 +108,9 @@ export class FigmaService {
     }
   }
 
-  async importFile(accessToken: string, fileKey: string, name?: string) {
+  async importFile(fileKey: string, name?: string, accessToken?: string) {
     try {
-      const fileData = await this.getFile(accessToken, fileKey);
+      const fileData = await this.getFile(fileKey, accessToken);
       
       // Process and store the file data as needed
       // This is where you'd implement your import logic
@@ -123,15 +128,15 @@ export class FigmaService {
   }
 
   async exportFile(
-    accessToken: string, 
     fileKey: string, 
     format: 'json' | 'svg' | 'png' | 'pdf',
-    options?: { scale?: number; nodeIds?: string[] }
+    options?: { scale?: number; nodeIds?: string[] },
+    accessToken?: string
   ) {
     try {
       if (format === 'json') {
         // Export as JSON (raw Figma file data)
-        const fileData = await this.getFile(accessToken, fileKey);
+        const fileData = await this.getFile(fileKey, accessToken);
         return fileData;
       } else {
         // Export as image/vector format
@@ -157,7 +162,7 @@ export class FigmaService {
     }
   }
 
-  async getTeamProjects(accessToken: string, teamId: string) {
+  async getTeamProjects(teamId: string, accessToken?: string) {
     try {
       const response = await this.api.get(`/teams/${teamId}/projects`, {
         headers: this.getAuthHeaders(accessToken),
@@ -169,7 +174,7 @@ export class FigmaService {
     }
   }
 
-  async getProjectFiles(accessToken: string, projectId: string) {
+  async getProjectFiles(projectId: string, accessToken?: string) {
     try {
       const response = await this.api.get(`/projects/${projectId}/files`, {
         headers: this.getAuthHeaders(accessToken),

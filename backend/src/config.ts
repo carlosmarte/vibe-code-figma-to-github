@@ -1,6 +1,15 @@
 import dotenv from 'dotenv';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
-dotenv.config();
+// Load .env file if it exists, otherwise rely on system environment variables
+const envPath = join(process.cwd(), '.env');
+if (existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+  console.log('📋 Loaded configuration from .env file');
+} else {
+  console.log('📋 Using system environment variables (no .env file found)');
+}
 
 export const config = {
   PORT: parseInt(process.env.PORT || '3200', 10),

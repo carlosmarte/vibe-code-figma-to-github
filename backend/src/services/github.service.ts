@@ -10,13 +10,16 @@ import type {
 export class GitHubService {
   private octokit: Octokit;
 
-  constructor() {
-    if (!config.GITHUB_TOKEN_VIBE) {
-      throw new Error('GitHub token (GITHUB_TOKEN_VIBE) is not configured');
+  constructor(token?: string) {
+    // Use provided token or fallback to environment variable
+    const authToken = token || config.GITHUB_TOKEN_VIBE;
+    
+    if (!authToken) {
+      throw new Error('GitHub token not provided. Please set GITHUB_TOKEN_VIBE in environment or provide token.');
     }
     
     this.octokit = new Octokit({
-      auth: config.GITHUB_TOKEN_VIBE,
+      auth: authToken,
       baseUrl: config.GITHUB_API_BASE_URL
     });
   }

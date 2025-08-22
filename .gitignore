@@ -10,7 +10,7 @@ docs/
 # Production
 dist/
 build/
-
+test*
 # Environment files
 .env
 .env.local

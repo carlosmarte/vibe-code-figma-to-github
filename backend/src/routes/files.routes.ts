@@ -19,23 +19,40 @@ interface ExportBody {
 export default async function filesRoutes(fastify: FastifyInstance) {
   const figmaService = new FigmaService();
 
-  fastify.addHook('preHandler', fastify.authenticate);
+  // Optional authentication - check for token but don't require it
+  fastify.addHook('preHandler', async (request, reply) => {
+    try {
+      const token = request.cookies?.token || request.headers.authorization?.replace('Bearer ', '');
+      
+      if (token && fastify.jwt) {
+        try {
+          const decoded = fastify.jwt.verify(token);
+          request.user = decoded;
+        } catch (error) {
+          // Invalid token, but continue without user
+          fastify.log.info('Invalid token, continuing without authentication');
+        }
+      } else {
+        // No token provided, will use environment variables
+        fastify.log.info('No authentication token, using environment variables');
+      }
+    } catch (error) {
+      // Continue without authentication
+      fastify.log.error('Error in authentication check:', error);
+    }
+  });
 
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const files = await figmaService.getUserFiles(request.user.accessToken);
-      return { files };
-    } catch (error) {
-      fastify.log.error(error);
-      return reply.code(500).send({ error: 'Failed to fetch files' });
-    }
+    // Return empty files array - we don't list user files, just import directly by ID
+    return { files: [] };
   });
 
   fastify.get('/:id', async (request: FastifyRequest<{ Params: FileParams }>, reply: FastifyReply) => {
     const { id } = request.params;
     
     try {
-      const file = await figmaService.getFile(request.user.accessToken, id);
+      // Updated method signature: fileKey first, then optional accessToken
+      const file = await figmaService.getFile(id, request.user?.accessToken);
       return { file };
     } catch (error) {
       fastify.log.error(error);
@@ -47,7 +64,8 @@ export default async function filesRoutes(fastify: FastifyInstance) {
     const { fileKey, name } = request.body;
     
     try {
-      const file = await figmaService.importFile(request.user.accessToken, fileKey, name);
+      // Updated method signature: fileKey, name, then optional accessToken
+      const file = await figmaService.importFile(fileKey, name, request.user?.accessToken);
       return { 
         success: true, 
         file 
@@ -63,11 +81,12 @@ export default async function filesRoutes(fastify: FastifyInstance) {
     const { format, scale, nodeIds } = request.body;
     
     try {
+      // Updated method signature: fileKey, format, options, then optional accessToken
       const exportData = await figmaService.exportFile(
-        request.user.accessToken, 
         id, 
         format, 
-        { scale, nodeIds }
+        { scale, nodeIds },
+        request.user?.accessToken
       );
       return { 
         success: true, 
@@ -83,7 +102,8 @@ export default async function filesRoutes(fastify: FastifyInstance) {
     const { id } = request.params;
     
     try {
-      const versions = await figmaService.getFileVersions(request.user.accessToken, id);
+      // Updated method signature: fileKey first, then optional accessToken
+      const versions = await figmaService.getFileVersions(id, request.user?.accessToken);
       return { versions };
     } catch (error) {
       fastify.log.error(error);
@@ -95,7 +115,8 @@ export default async function filesRoutes(fastify: FastifyInstance) {
     const { id } = request.params;
     
     try {
-      const comments = await figmaService.getFileComments(request.user.accessToken, id);
+      // Updated method signature: fileKey first, then optional accessToken
+      const comments = await figmaService.getFileComments(id, request.user?.accessToken);
       return { comments };
     } catch (error) {
       fastify.log.error(error);

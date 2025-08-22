@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { Download, FileJson, Image, FileText, AlertCircle, Github } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -14,14 +14,6 @@ export const Export = () => {
   const [scale, setScale] = useState(1);
   const [nodeIds, setNodeIds] = useState('');
   const [activeTab, setActiveTab] = useState<'traditional' | 'github'>('traditional');
-
-  const { data: files } = useQuery({
-    queryKey: ['files'],
-    queryFn: async () => {
-      const response = await api.get('/files');
-      return response.data.files || [];
-    },
-  });
 
   const exportMutation = useMutation({
     mutationFn: async (data: {
@@ -124,20 +116,20 @@ export const Export = () => {
                 {/* File Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select File
+                    Figma File ID
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={selectedFile}
                     onChange={(e) => setSelectedFile(e.target.value)}
+                    placeholder="Enter Figma file ID (e.g., tmaZV2VEXIIrWYVjqaNUxa)"
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Choose a file...</option>
-                    {files?.map((file: any) => (
-                      <option key={file.key} value={file.key}>
-                        {file.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
+                  {fileId && (
+                    <p className="mt-1 text-sm text-gray-500">
+                      Imported from: {fileId}
+                    </p>
+                  )}
                 </div>
 
                 {/* Format Selection */}

@@ -12,12 +12,17 @@ import type {
 export default async function githubRoutes(fastify: FastifyInstance) {
   let githubService: GitHubService | null = null;
 
-  const getGitHubService = () => {
-    if (!config.GITHUB_TOKEN_VIBE) {
-      throw new Error('GitHub token (GITHUB_TOKEN_VIBE) is not configured');
+  const getGitHubService = (token?: string) => {
+    // Use provided token or fallback to environment variable
+    const authToken = token || config.GITHUB_TOKEN_VIBE;
+    
+    if (!authToken) {
+      throw new Error('GitHub token not provided. Please set GITHUB_TOKEN_VIBE in environment or provide token.');
     }
-    if (!githubService) {
-      githubService = new GitHubService();
+    
+    // Create new service instance if token is different or doesn't exist yet
+    if (!githubService || token) {
+      githubService = new GitHubService(token);
     }
     return githubService;
   };

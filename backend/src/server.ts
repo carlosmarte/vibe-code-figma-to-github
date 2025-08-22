@@ -131,6 +131,12 @@ const start = async () => {
   // Clean up any stale process entries first
   await processManager.cleanupStaleProcesses();
   
+  // Log configuration status
+  console.log('\n🔧 Configuration Status:');
+  console.log(`   FIGMA_TOKEN: ${config.FIGMA_TOKEN ? '✅ Configured' : '❌ Not configured (set FIGMA_TOKEN env variable)'}`);
+  console.log(`   GITHUB_TOKEN_VIBE: ${config.GITHUB_TOKEN_VIBE ? '✅ Configured' : '❌ Not configured (set GITHUB_TOKEN_VIBE env variable)'}`);
+  console.log('');
+  
   const server = buildServer();
   let actualPort = config.PORT;
   

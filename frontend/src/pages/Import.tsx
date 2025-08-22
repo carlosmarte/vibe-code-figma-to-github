@@ -16,7 +16,8 @@ export const Import = () => {
       return response.data;
     },
     onSuccess: (data) => {
-      navigate(`/files/${data.file.fileKey}`);
+      // Redirect to Export page with the file ID as query parameter
+      navigate(`/export?file=${data.file.fileKey}`);
     },
     onError: (error: any) => {
       setError(error.response?.data?.error || 'Failed to import file');
@@ -131,10 +132,14 @@ export const Import = () => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/files')}
+                onClick={() => {
+                  setFileKey('');
+                  setFileName('');
+                  setError('');
+                }}
                 className="px-6 py-3 border border-gray-200 rounded-lg hover:bg-gray-50"
               >
-                Cancel
+                Clear
               </button>
             </div>
           </form>
