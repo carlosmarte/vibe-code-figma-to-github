@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useFigmaContext } from '../contexts/FigmaContext';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { 
   Grid3x3, 
@@ -13,7 +13,9 @@ import {
   Frame,
   Loader2,
   Check,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface ComponentNode {
@@ -37,6 +39,8 @@ export const Extraction = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [componentPreview, setComponentPreview] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   // Fetch and extract components from the file
   const { data: componentsData, isLoading } = useQuery({
@@ -138,6 +142,30 @@ export const Extraction = () => {
     return Array.from(types).sort();
   }, [availableComponents]);
 
+  // Fetch component preview
+  const fetchComponentPreview = async (componentId: string) => {
+    if (!fileId) return;
+    
+    setLoadingPreview(true);
+    setComponentPreview(null);
+    
+    try {
+      const response = await api.post(`/figma/files/${fileId}/export`, {
+        ids: [componentId],
+        format: 'png',
+        scale: 2
+      });
+      
+      if (response.data.images && response.data.images[componentId]) {
+        setComponentPreview(response.data.images[componentId]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch component preview:', error);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   const handleSelectComponent = (component: ComponentNode) => {
     setSelectedComponent({
       id: component.id,
@@ -145,6 +173,9 @@ export const Extraction = () => {
       type: component.type,
       path: component.path || ''
     });
+    
+    // Fetch preview for the selected component
+    fetchComponentPreview(component.id);
   };
 
   const getTypeIcon = (type: string) => {
@@ -193,9 +224,11 @@ export const Extraction = () => {
         <p className="text-gray-600 mt-2">Select a component from your Figma file to export</p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm">
-        {/* Search and Filter Bar */}
-        <div className="p-4 border-b">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Component List - Left Side */}
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm">
+          {/* Search and Filter Bar */}
+          <div className="p-4 border-b">
           <div className="flex items-center gap-4">
             <div className="flex-1 relative">
               <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -348,24 +381,82 @@ export const Extraction = () => {
             </table>
           )}
         </div>
-
-        {/* Action Bar */}
-        {selectedComponent && (
-          <div className="p-4 border-t bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                <strong>Selected:</strong> {selectedComponent.name} ({selectedComponent.type})
+      </div>
+      
+      {/* Component Preview - Right Side */}
+      <div className="lg:col-span-1">
+        <div className="bg-white rounded-lg shadow-sm p-6 sticky top-6">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+            <Eye size={20} />
+            Component Preview
+          </h3>
+          
+          {selectedComponent ? (
+            <div className="space-y-4">
+              {/* Component Info */}
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-sm font-medium text-gray-900">{selectedComponent.name}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Type: {selectedComponent.type} | ID: {selectedComponent.id}
+                </p>
               </div>
+              
+              {/* Preview Image */}
+              <div className="border rounded-lg overflow-hidden bg-checkered">
+                {loadingPreview ? (
+                  <div className="h-64 flex items-center justify-center">
+                    <div className="text-center">
+                      <Loader2 size={32} className="animate-spin text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">Loading preview...</p>
+                    </div>
+                  </div>
+                ) : componentPreview ? (
+                  <img
+                    src={componentPreview}
+                    alt={selectedComponent.name}
+                    className="w-full h-auto"
+                    onError={() => setComponentPreview(null)}
+                  />
+                ) : (
+                  <div className="h-64 flex items-center justify-center">
+                    <div className="text-center text-gray-400">
+                      <ImageIcon size={48} className="mx-auto mb-2" />
+                      <p className="text-sm">Preview not available</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Actions */}
               <button
                 onClick={() => navigate('/export')}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
-                Continue to Export →
+                Export This Component →
               </button>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="text-center py-12 text-gray-400">
+              <Grid3x3 size={48} className="mx-auto mb-3" />
+              <p className="text-sm">Select a component to preview</p>
+              <p className="text-xs mt-1">Click on any row in the table</p>
+            </div>
+          )}
+        </div>
       </div>
+      </div>
+      
+      <style>{`
+        .bg-checkered {
+          background-image: 
+            linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+            linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+            linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+          background-size: 20px 20px;
+          background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+      `}</style>
     </div>
   );
 };
