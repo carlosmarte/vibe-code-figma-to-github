@@ -1,0 +1,3 @@
+[submodule "external/figma-api-module"]
+	path = external/figma-api-module
+	url = https://github.com/carlosmarte/figma-api-module.git

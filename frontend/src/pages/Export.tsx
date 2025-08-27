@@ -1,32 +1,31 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '../services/api';
-import { Download, FileJson, Image, FileText, AlertCircle, Github } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Download, FileJson, Image, FileText, AlertCircle, Github, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { GitHubExport } from '../components/GitHubExport';
+import { useFigmaContext } from '../contexts/FigmaContext';
 
 export const Export = () => {
-  const [searchParams] = useSearchParams();
-  const fileId = searchParams.get('file');
+  const navigate = useNavigate();
+  const { fileId, selectedComponent } = useFigmaContext();
   
-  const [selectedFile, setSelectedFile] = useState(fileId || '');
   const [format, setFormat] = useState<'json' | 'svg' | 'png' | 'pdf'>('json');
   const [scale, setScale] = useState(1);
-  const [nodeIds, setNodeIds] = useState('');
-  const [activeTab, setActiveTab] = useState<'traditional' | 'github'>('traditional');
+  const [activeTab, setActiveTab] = useState<'traditional' | 'github'>('github'); // Default to GitHub tab
 
   const exportMutation = useMutation({
     mutationFn: async (data: {
       fileId: string;
       format: 'json' | 'svg' | 'png' | 'pdf';
       scale?: number;
-      nodeIds?: string[];
+      nodeId?: string;
     }) => {
       // Request with responseType blob to handle binary data
-      const response = await api.post(`/files/${data.fileId}/export`, {
+      const response = await api.post(`/figma/files/${data.fileId}/export`, {
+        ids: data.nodeId ? [data.nodeId] : [],
         format: data.format,
-        scale: data.scale,
-        nodeIds: data.nodeIds,
+        scale: data.scale
       }, {
         responseType: 'blob',
       });
@@ -80,18 +79,16 @@ export const Export = () => {
   });
 
   const handleExport = () => {
-    if (!selectedFile) return;
-
-    const nodeIdArray = nodeIds
-      .split(',')
-      .map(id => id.trim())
-      .filter(id => id);
+    if (!fileId || !selectedComponent) {
+      alert('Please select a component from the Extraction tab first');
+      return;
+    }
 
     exportMutation.mutate({
-      fileId: selectedFile,
+      fileId,
       format,
       scale: format === 'png' ? scale : undefined,
-      nodeIds: nodeIdArray.length > 0 ? nodeIdArray : undefined,
+      nodeId: selectedComponent.id
     });
   };
 
@@ -105,8 +102,25 @@ export const Export = () => {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Export Figma File</h1>
-        <p className="text-gray-600 mt-2">Export your Figma files in various formats or push to GitHub</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Export Component</h1>
+            <p className="text-gray-600 mt-2">
+              {selectedComponent 
+                ? `Export "${selectedComponent.name}" in various formats or push to GitHub`
+                : 'Select a component first to export'}
+            </p>
+          </div>
+          {!selectedComponent && (
+            <button
+              onClick={() => navigate('/extraction')}
+              className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              <ArrowLeft size={18} />
+              Select Component
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="max-w-4xl">
@@ -146,24 +160,20 @@ export const Export = () => {
           <div className="p-6">
             {activeTab === 'traditional' ? (
               <div className="space-y-6">
-                {/* File Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Figma File ID
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedFile}
-                    onChange={(e) => setSelectedFile(e.target.value)}
-                    placeholder="Enter Figma file ID (e.g., tmaZV2VEXIIrWYVjqaNUxa)"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {fileId && (
-                    <p className="mt-1 text-sm text-gray-500">
-                      Imported from: {fileId}
-                    </p>
-                  )}
-                </div>
+                {/* Selected Component Info */}
+                {selectedComponent ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-900">Selected Component:</p>
+                      <p className="text-blue-700 mt-1">{selectedComponent.name}</p>
+                      <p className="text-blue-600 text-xs mt-1">Type: {selectedComponent.type} | ID: {selectedComponent.id}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800">No component selected. Please go to the Extraction tab to select a component.</p>
+                  </div>
+                )}
 
                 {/* Format Selection */}
                 <div>
@@ -217,24 +227,6 @@ export const Export = () => {
               </div>
             )}
 
-                {/* Node IDs (optional) */}
-                {format !== 'json' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Node IDs (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={nodeIds}
-                  onChange={(e) => setNodeIds(e.target.value)}
-                  placeholder="Enter comma-separated node IDs"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="mt-2 text-sm text-gray-500">
-                  Leave empty to export the entire file
-                </p>
-              </div>
-            )}
 
                 {/* Error Message */}
                 {exportMutation.isError && (
@@ -248,7 +240,7 @@ export const Export = () => {
                 <div className="flex items-center gap-3">
               <button
                 onClick={handleExport}
-                disabled={!selectedFile || exportMutation.isPending}
+                disabled={!fileId || !selectedComponent || exportMutation.isPending}
                 className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {exportMutation.isPending ? (
@@ -266,7 +258,7 @@ export const Export = () => {
                 </div>
               </div>
             ) : (
-              <GitHubExport fileId={selectedFile} />
+              <GitHubExport fileId={fileId || ''} />
             )}
           </div>
         </div>

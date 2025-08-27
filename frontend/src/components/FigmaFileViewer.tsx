@@ -113,8 +113,8 @@ export function FigmaFileViewer({ fileId }: FigmaFileViewerProps) {
   };
 
   // Render node tree for export selection
-  const renderNodeTree = (node: any, depth: number = 0): JSX.Element[] => {
-    const elements: JSX.Element[] = [];
+  const renderNodeTree = (node: any, depth: number = 0): React.ReactElement[] => {
+    const elements: React.ReactElement[] = [];
     
     if (!node || !node.id) return elements;
     

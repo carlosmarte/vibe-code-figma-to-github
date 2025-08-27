@@ -3,9 +3,11 @@ import { useMutation } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { Upload, Link, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useFigmaContext } from '../contexts/FigmaContext';
 
 export const Import = () => {
   const navigate = useNavigate();
+  const { setFileId, setFileData, clearState } = useFigmaContext();
   const [fileKey, setFileKey] = useState('');
   const [fileName, setFileName] = useState('');
   const [error, setError] = useState('');
@@ -16,8 +18,16 @@ export const Import = () => {
       return response.data;
     },
     onSuccess: (data) => {
-      // Redirect to Export page with the file ID as query parameter
-      navigate(`/export?file=${data.file.fileKey}`);
+      // Store in context and navigate to preview
+      setFileId(data.file.fileKey);
+      setFileData({
+        fileKey: data.file.fileKey,
+        name: data.file.name || fileName,
+        lastModified: data.file.lastModified,
+        version: data.file.version,
+        thumbnailUrl: data.file.thumbnailUrl
+      });
+      navigate('/preview');
     },
     onError: (error: any) => {
       setError(error.response?.data?.error || 'Failed to import file');
@@ -27,6 +37,7 @@ export const Import = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    clearState(); // Clear any previous state
     
     if (!fileKey) {
       setError('Please enter a Figma file URL or key');

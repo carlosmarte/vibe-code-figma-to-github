@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { config } from '../config';
+import { figmaSDKService } from '../services/figma-sdk-wrapper';
 
 interface FigmaFileRequest {
   Params: {
@@ -238,6 +239,85 @@ export default async function figmaRoutes(fastify: FastifyInstance) {
         fastify.log.error(error);
         return reply.code(500).send({ 
           error: 'Failed to fetch file comments' 
+        });
+      }
+    }
+  );
+
+  // Get file preview
+  fastify.get<FigmaFileRequest>(
+    '/files/:fileId/preview',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          required: ['fileId'],
+          properties: {
+            fileId: { type: 'string' }
+          }
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              previewUrl: { type: ['string', 'null'] },
+              fileData: { type: 'object', additionalProperties: true }
+            }
+          }
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const { fileId } = request.params;
+        const preview = await figmaSDKService.getFilePreview(fileId);
+        return preview;
+      } catch (error: any) {
+        fastify.log.error(error);
+        return reply.code(500).send({ 
+          error: error.message || 'Failed to get file preview' 
+        });
+      }
+    }
+  );
+
+  // Get file components for extraction
+  fastify.get<FigmaFileRequest>(
+    '/files/:fileId/components',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          required: ['fileId'],
+          properties: {
+            fileId: { type: 'string' }
+          }
+        },
+        response: {
+          200: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+                type: { type: 'string' },
+                path: { type: 'string' }
+              }
+            }
+          }
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const { fileId } = request.params;
+        const components = await figmaSDKService.getComponents(fileId);
+        return components;
+      } catch (error: any) {
+        fastify.log.error(error);
+        return reply.code(500).send({ 
+          error: error.message || 'Failed to get file components' 
         });
       }
     }

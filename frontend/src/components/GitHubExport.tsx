@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Github, GitBranch, FileCode, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Github, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
-import type { GitHubExportRequest, GitHubRepoInfo, GitHubBranch } from '../../shared/types';
+import type { GitHubExportRequest, GitHubRepoInfo, GitHubBranch } from '../../../shared/types';
+import { useFigmaContext } from '../contexts/FigmaContext';
+import { useNavigate } from 'react-router-dom';
 
 interface GitHubExportProps {
   fileId: string;
 }
 
 export function GitHubExport({ fileId }: GitHubExportProps) {
+  const navigate = useNavigate();
+  const { selectedComponent: contextSelectedComponent } = useFigmaContext();
   const [repoUrl, setRepoUrl] = useState('');
   const [filePath, setFilePath] = useState('');
-  const [selectedComponent, setSelectedComponent] = useState('');
   const [baseBranch, setBaseBranch] = useState('');
   const [branchName, setBranchName] = useState('');
   const [targetBranch, setTargetBranch] = useState('');
@@ -47,7 +50,7 @@ export function GitHubExport({ fileId }: GitHubExportProps) {
     }
   });
 
-  const { data: branches, refetch: refetchBranches } = useQuery({
+  const { data: branches } = useQuery({
     queryKey: ['github-branches', repoInfo?.owner, repoInfo?.repo],
     queryFn: async () => {
       if (!repoInfo) return [];
@@ -86,27 +89,6 @@ export function GitHubExport({ fileId }: GitHubExportProps) {
     }
   }, [repoUrl]);
 
-  const getAllComponents = (node: any, components: { id: string; name: string; type: string }[] = []): { id: string; name: string; type: string }[] => {
-    if (!node) return components;
-    
-    if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET' || node.type === 'FRAME') {
-      components.push({
-        id: node.id,
-        name: node.name,
-        type: node.type
-      });
-    }
-    
-    if (node.children && Array.isArray(node.children)) {
-      node.children.forEach((child: any) => {
-        getAllComponents(child, components);
-      });
-    }
-    
-    return components;
-  };
-
-  const availableComponents = fileData?.document ? getAllComponents(fileData.document) : [];
 
   // Helper function to convert component name to kebab-case filename
   const toKebabCase = (str: string): string => {
@@ -119,33 +101,28 @@ export function GitHubExport({ fileId }: GitHubExportProps) {
 
   // Update file path when component is selected and convertToReact is checked
   useEffect(() => {
-    if (convertToReact && selectedComponent) {
-      const component = availableComponents.find(c => c.id === selectedComponent);
-      if (component) {
-        const filename = toKebabCase(component.name);
-        const extension = convertToReact ? 'tsx' : 'json';
-        
-        // If filePath is empty or is a directory, generate full path
-        if (!filePath || filePath.endsWith('/') || !filePath.includes('.')) {
-          const directory = filePath.endsWith('/') ? filePath : (filePath ? filePath + '/' : 'src/components/');
-          setFilePath(`${directory}${filename}.${extension}`);
-        } else {
-          // If there's already a file path with extension, just update the extension
-          const pathWithoutExt = filePath.replace(/\.[^/.]+$/, '');
-          setFilePath(`${pathWithoutExt}.${extension}`);
-        }
+    if (convertToReact && contextSelectedComponent) {
+      const filename = toKebabCase(contextSelectedComponent.name);
+      const extension = convertToReact ? 'tsx' : 'json';
+      
+      // If filePath is empty or is a directory, generate full path
+      if (!filePath || filePath.endsWith('/') || !filePath.includes('.')) {
+        const directory = filePath.endsWith('/') ? filePath : (filePath ? filePath + '/' : 'src/components/');
+        setFilePath(`${directory}${filename}.${extension}`);
+      } else {
+        // If there's already a file path with extension, just update the extension
+        const pathWithoutExt = filePath.replace(/\.[^/.]+$/, '');
+        setFilePath(`${pathWithoutExt}.${extension}`);
       }
     }
-  }, [convertToReact, selectedComponent, availableComponents]);
+  }, [convertToReact, contextSelectedComponent, filePath]);
 
   const handleExport = async () => {
-    if (!selectedComponent || !repoInfo || !filePath || !branchName || !baseBranch || !targetBranch) {
+    if (!contextSelectedComponent || !repoInfo || !filePath || !branchName || !baseBranch || !targetBranch) {
       return;
     }
 
-    const selectedNode = availableComponents.find(c => c.id === selectedComponent);
-    if (!selectedNode) return;
-
+    // Fetch the component data if needed
     const findNodeData = (node: any, id: string): any => {
       if (node.id === id) return node;
       if (node.children) {
@@ -157,13 +134,13 @@ export function GitHubExport({ fileId }: GitHubExportProps) {
       return null;
     };
 
-    const componentData = findNodeData(fileData.document, selectedComponent);
+    const componentData = fileData ? findNodeData(fileData.document, contextSelectedComponent.id) : null;
     
     const exportRequest: GitHubExportRequest = {
       repoUrl,
       filePath,
-      componentName: selectedNode.name,
-      componentData: JSON.stringify(componentData, null, 2),
+      componentName: contextSelectedComponent.name,
+      componentData: JSON.stringify(componentData || contextSelectedComponent, null, 2),
       baseBranch,
       branchName,
       targetBranch,
@@ -177,7 +154,7 @@ export function GitHubExport({ fileId }: GitHubExportProps) {
   const isFormValid = () => {
     return repoInfo && 
            filePath && 
-           selectedComponent && 
+           contextSelectedComponent && 
            baseBranch && 
            branchName && 
            targetBranch &&
@@ -185,10 +162,28 @@ export function GitHubExport({ fileId }: GitHubExportProps) {
            !exportMutation.isPending;
   };
 
-  if (!fileId) {
+  if (!fileId || !contextSelectedComponent) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <p className="text-sm text-yellow-800">Please select a file first</p>
+        <div className="flex items-start gap-3">
+          <AlertCircle size={20} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-yellow-800 font-medium">
+              {!fileId ? 'No file selected' : 'No component selected'}
+            </p>
+            <p className="text-sm text-yellow-700 mt-1">
+              {!fileId 
+                ? 'Please import a Figma file first.'
+                : 'Please go to the Extraction tab and select a component to export.'}
+            </p>
+            <button
+              onClick={() => navigate(!fileId ? '/' : '/extraction')}
+              className="mt-3 text-sm text-yellow-800 underline hover:text-yellow-900"
+            >
+              {!fileId ? 'Go to Import →' : 'Select Component →'}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -264,23 +259,16 @@ export function GitHubExport({ fileId }: GitHubExportProps) {
           </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Component <span className="text-red-500">*</span>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <label className="block text-sm font-medium text-blue-900 mb-2">
+            Selected Component
           </label>
-          <select
-            value={selectedComponent}
-            onChange={(e) => setSelectedComponent(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={availableComponents.length === 0}
-          >
-            <option value="">Choose a component...</option>
-            {availableComponents.map((component) => (
-              <option key={component.id} value={component.id}>
-                {component.name} ({component.type})
-              </option>
-            ))}
-          </select>
+          <div className="text-sm">
+            <p className="font-medium text-blue-800">{contextSelectedComponent.name}</p>
+            <p className="text-blue-600 text-xs mt-1">
+              Type: {contextSelectedComponent.type} | ID: {contextSelectedComponent.id}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
@@ -294,7 +282,7 @@ export function GitHubExport({ fileId }: GitHubExportProps) {
           <label htmlFor="convertToReact" className="text-sm font-medium text-gray-700">
             Convert to React Component (.tsx)
           </label>
-          {convertToReact && selectedComponent && (
+          {convertToReact && contextSelectedComponent && (
             <span className="ml-auto text-xs text-gray-500">
               Auto-generated filename from component name
             </span>
