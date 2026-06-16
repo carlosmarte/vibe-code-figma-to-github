@@ -1,0 +1,74 @@
+{
+  "id": "123:456",
+  "name": "Primary Button",
+  "type": "COMPONENT",
+  "absoluteBoundingBox": {
+    "x": 0,
+    "y": 0,
+    "width": 120,
+    "height": 48
+  },
+  "fills": [
+    {
+      "type": "SOLID",
+      "color": {
+        "r": 0.231,
+        "g": 0.51,
+        "b": 0.965
+      },
+      "opacity": 1
+    }
+  ],
+  "cornerRadius": 8,
+  "paddingLeft": 24,
+  "paddingRight": 24,
+  "paddingTop": 12,
+  "paddingBottom": 12,
+  "layoutMode": "HORIZONTAL",
+  "primaryAxisAlignItems": "CENTER",
+  "counterAxisAlignItems": "CENTER",
+  "effects": [
+    {
+      "type": "DROP_SHADOW",
+      "visible": true,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      "opacity": 0.1,
+      "offset": {
+        "x": 0,
+        "y": 2
+      },
+      "radius": 4,
+      "spread": 0
+    }
+  ],
+  "children": [
+    {
+      "id": "123:457",
+      "name": "Button Text",
+      "type": "TEXT",
+      "characters": "Click Me",
+      "style": {
+        "fontFamily": "Inter",
+        "fontSize": 16,
+        "fontWeight": 600,
+        "textAlignHorizontal": "CENTER",
+        "letterSpacing": 0,
+        "lineHeightPx": 24
+      },
+      "fills": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      ]
+    }
+  ]
+}
